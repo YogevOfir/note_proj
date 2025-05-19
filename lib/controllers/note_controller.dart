@@ -37,7 +37,7 @@ class NoteController {
       id: '',  // Will be set by Firestore
       title: title,
       content: content,
-      userId: _currentUser!.uid,
+      userId: _currentUser.uid,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       latitude: latitude,
@@ -71,7 +71,7 @@ class NoteController {
       return ['User not authenticated'];
     }
 
-    if (existingNote.userId != _currentUser!.uid) {
+    if (existingNote.userId != _currentUser.uid) {
       return ['Not authorized to update this note'];
     }
 
@@ -108,7 +108,7 @@ class NoteController {
       return 'User not authenticated';
     }
 
-    if (note.userId != _currentUser!.uid) {
+    if (note.userId != _currentUser.uid) {
       return 'Not authorized to delete this note';
     }
 

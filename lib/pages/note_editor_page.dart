@@ -19,16 +19,16 @@ class NoteEditorPage extends StatefulWidget {
   final bool isViewOnly;
 
   const NoteEditorPage({
-    Key? key, 
+    super.key, 
     this.note,
     this.isViewOnly = false,
-  }) : super(key: key);
+  });
 
   @override
-  _NoteEditorPageState createState() => _NoteEditorPageState();
+  NoteEditorPageState createState() => NoteEditorPageState();
 }
 
-class _NoteEditorPageState extends State<NoteEditorPage> {
+class NoteEditorPageState extends State<NoteEditorPage> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _noteController = NoteController();
