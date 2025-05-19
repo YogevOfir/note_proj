@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/note.dart';
-import '../auth.dart';
+import '../controllers/note_controller.dart';
 
 /// A page for creating and editing notes.
 /// 
@@ -20,42 +19,46 @@ class NoteEditorPage extends StatefulWidget {
   final bool isViewOnly;
 
   const NoteEditorPage({
-    super.key, 
+    Key? key, 
     this.note,
     this.isViewOnly = false,
-  });
+  }) : super(key: key);
 
   @override
-  State<NoteEditorPage> createState() => _NoteEditorPageState();
+  _NoteEditorPageState createState() => _NoteEditorPageState();
 }
 
 class _NoteEditorPageState extends State<NoteEditorPage> {
-  // Controllers for text input
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-
-  // State variables
+  final _noteController = NoteController();
   bool _isLoading = false;
   bool _isEditing = false;
-  double? _latitude;
-  double? _longitude;
+  String? _errorMessage;
+  Position? _currentPosition;
 
   @override
   void initState() {
     super.initState();
-    _initializeNote();
-  }
-
-  /// Initialize the note data if editing an existing note
-  void _initializeNote() {
     if (widget.note != null) {
       _titleController.text = widget.note!.title;
       _contentController.text = widget.note!.content;
-      _latitude = widget.note!.latitude;
-      _longitude = widget.note!.longitude;
+      _currentPosition = widget.note!.latitude != null && widget.note!.longitude != null
+          ? Position(
+              latitude: widget.note!.latitude!,
+              longitude: widget.note!.longitude!,
+              timestamp: DateTime.now(),
+              accuracy: 0,
+              altitude: 0,
+              heading: 0,
+              speed: 0,
+              speedAccuracy: 0,
+              altitudeAccuracy: 0,
+              headingAccuracy: 0,
+            )
+          : null;
     }
-    _isEditing = !widget.isViewOnly;
+    _isEditing = widget.note == null; // Start in edit mode for new notes
   }
 
   @override
@@ -65,95 +68,102 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     super.dispose();
   }
 
-  /// Get the current location of the device
   Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      // Check and request location permission
-      LocationPermission permission = await Geolocator.checkPermission();
+      final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception('Location permission denied');
+        final requestPermission = await Geolocator.requestPermission();
+        if (requestPermission == LocationPermission.denied) {
+          setState(() {
+            _errorMessage = 'Location permission denied';
+            _isLoading = false;
+          });
+          return;
         }
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception(
-          'Location permissions are permanently denied, we cannot request permissions.'
-        );
-      }
-
-      // Get current position with high accuracy
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5),
-      );
-      
-      _latitude = position.latitude;
-      _longitude = position.longitude;
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = position;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error getting location: $e'),
-            action: SnackBarAction(
-              label: 'Settings',
-              onPressed: () async {
-                await Geolocator.openAppSettings();
-              },
-            ),
-          ),
-        );
-      }
+      setState(() {
+        _errorMessage = 'Failed to get location: ${e.toString()}';
+        _isLoading = false;
+      });
     }
   }
 
-  /// Save the note to Firestore
   Future<void> _saveNote() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Title and content are required';
+      });
+      return;
+    }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      final user = Auth().currentUser;
-      if (user == null) throw Exception('User not logged in');
-
-      // Get current location when saving
+      // Get current location
       await _getCurrentLocation();
-
-      final note = Note(
-        id: widget.note?.id ?? '',
-        title: _titleController.text,
-        content: _contentController.text,
-        userId: user.uid,
-        createdAt: widget.note?.createdAt ?? DateTime.now(),
-        updatedAt: DateTime.now(),
-        latitude: _latitude,
-        longitude: _longitude,
-      );
 
       if (widget.note == null) {
         // Create new note
-        await FirebaseFirestore.instance.collection('notes').add(note.toMap());
+        final errors = await _noteController.createNote(
+          title: _titleController.text,
+          content: _contentController.text,
+          latitude: _currentPosition?.latitude,
+          longitude: _currentPosition?.longitude,
+        );
+
+        if (errors != null) {
+          setState(() {
+            _errorMessage = errors.join('\n');
+            _isLoading = false;
+          });
+          return;
+        }
       } else {
         // Update existing note
-        await FirebaseFirestore.instance
-            .collection('notes')
-            .doc(widget.note!.id)
-            .update(note.toMap());
+        final errors = await _noteController.updateNote(
+          widget.note!,
+          title: _titleController.text,
+          content: _contentController.text,
+          latitude: _currentPosition?.latitude,
+          longitude: _currentPosition?.longitude,
+        );
+
+        if (errors != null) {
+          setState(() {
+            _errorMessage = errors.join('\n');
+            _isLoading = false;
+          });
+          return;
+        }
       }
 
-      setState(() => _isEditing = false);
+      setState(() {
+        _isEditing = false;
+        _isLoading = false;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving note: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _errorMessage = 'Failed to save note: ${e.toString()}';
+        _isLoading = false;
+      });
     }
   }
 
-  /// Delete the current note
   Future<void> _deleteNote() async {
     if (widget.note == null) return;
 
@@ -177,132 +187,116 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
 
     if (confirmed != true) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      await FirebaseFirestore.instance
-          .collection('notes')
-          .doc(widget.note!.id)
-          .delete();
+      final error = await _noteController.deleteNote(widget.note!);
+      if (error != null) {
+        setState(() {
+          _errorMessage = error;
+          _isLoading = false;
+        });
+        return;
+      }
 
       if (mounted) {
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting note: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  /// Build the app bar with appropriate actions
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: Text(widget.note == null ? 'New Note' : 'Note'),
-      actions: [
-        if (widget.note != null)
-          IconButton(
-            onPressed: _isLoading ? null : _deleteNote,
-            icon: const Icon(Icons.delete),
-            tooltip: 'Delete Note',
-          ),
-        if (_isEditing)
-          IconButton(
-            onPressed: _isLoading ? null : _saveNote,
-            icon: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save),
-            tooltip: 'Save Note',
-          )
-        else
-          IconButton(
-            onPressed: () => setState(() => _isEditing = true),
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit Note',
-          ),
-      ],
-    );
-  }
-
-  /// Build the title field
-  Widget _buildTitleField() {
-    if (_isEditing) {
-      return TextFormField(
-        controller: _titleController,
-        decoration: const InputDecoration(
-          labelText: 'Title',
-          border: OutlineInputBorder(),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter a title';
-          }
-          return null;
-        },
-      );
-    } else {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          _titleController.text.isEmpty ? 'Untitled' : _titleController.text,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      );
-    }
-  }
-
-  /// Build the content field
-  Widget _buildContentField() {
-    if (_isEditing) {
-      return TextFormField(
-        controller: _contentController,
-        textAlignVertical: TextAlignVertical.top,
-        decoration: const InputDecoration(
-          hintText: 'Start writing...',
-          hintStyle: TextStyle(height: 1),
-          alignLabelWithHint: true,
-          border: OutlineInputBorder(),
-        ),
-        maxLines: 20,
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter some content';
-          }
-          return null;
-        },
-      );
-    } else {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          _contentController.text,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Failed to delete note: ${e.toString()}';
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildAppBar(),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildTitleField(),
-            const SizedBox(height: 16),
-            _buildContentField(),
-          ],
-        ),
+      appBar: AppBar(
+        title: Text(widget.note == null ? 'New Note' : 'Note'),
+        actions: [
+          if (widget.note != null)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _isLoading ? null : _deleteNote,
+            ),
+          if (_isEditing)
+            IconButton(
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.save),
+              onPressed: _isLoading ? null : _saveNote,
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => setState(() => _isEditing = true),
+            ),
+        ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  if (_isEditing)
+                    TextField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        _titleController.text.isEmpty ? 'Untitled' : _titleController.text,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                  const SizedBox(height: 16.0),
+                  if (_isEditing)
+                    TextField(
+                      controller: _contentController,
+                      decoration: const InputDecoration(
+                        hintText: 'Start writing...',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 20,
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        _contentController.text,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 } 

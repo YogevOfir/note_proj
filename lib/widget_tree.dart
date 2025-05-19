@@ -1,6 +1,6 @@
 import './pages/home_page.dart';
 import './pages/login_register_page.dart';
-import './auth.dart';
+import './controllers/auth_controller.dart';
 import 'package:flutter/material.dart';
 
 class WidgetTree extends StatefulWidget {
@@ -11,11 +11,14 @@ class WidgetTree extends StatefulWidget {
 }
 
 class _WidgetTreeState extends State<WidgetTree> {
+  final AuthController _authController = AuthController();
+
   @override
+  // Monitor auth state real time and emit events to change screen
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: Auth().authStateChanges,
-     builder: (context, snapshot) {
+      stream: _authController.authStateChanges,
+      builder: (context, snapshot) {
       if (snapshot.hasData) {
         return HomePage();
       } else {

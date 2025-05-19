@@ -11,6 +11,7 @@ import '../models/note.dart';
 /// - Show note titles in marker info windows
 /// - Handle marker taps to view note details
 /// - Automatically fit the map to show all markers
+/// - Cluster overlapping markers
 class NoteMapView extends StatefulWidget {
   /// The list of notes to display on the map
   final List<Note> notes;
@@ -34,6 +35,12 @@ class _NoteMapViewState extends State<NoteMapView> {
   
   // Set of markers to display on the map
   Set<Marker> _markers = {};
+  
+  // Map to store notes by location
+  final Map<String, List<Note>> _notesByLocation = {};
+  
+  // Currently selected location
+  String? _selectedLocation;
 
   @override
   void initState() {
@@ -49,21 +56,103 @@ class _NoteMapViewState extends State<NoteMapView> {
     }
   }
 
+  /// Create a location key from coordinates
+  String _getLocationKey(double lat, double lng) {
+    // Round to 6 decimal places (roughly 11cm precision)
+    return '${lat.toStringAsFixed(6)},${lng.toStringAsFixed(6)}';
+  }
+
+  /// Group notes by location
+  void _groupNotesByLocation() {
+    _notesByLocation.clear();
+    
+    for (final note in widget.notes) {
+      if (note.latitude != null && note.longitude != null) {
+        final locationKey = _getLocationKey(note.latitude!, note.longitude!);
+        _notesByLocation.putIfAbsent(locationKey, () => []).add(note);
+      }
+    }
+  }
+
   /// Create markers for each note with location data
   void _createMarkers() {
-    _markers = widget.notes
-        .where((note) => note.latitude != null && note.longitude != null)
-        .map((note) {
-      return Marker(
-        markerId: MarkerId(note.id),
-        position: LatLng(note.latitude!, note.longitude!),
-        infoWindow: InfoWindow(
-          title: note.title.isEmpty ? 'Untitled' : note.title,
-          snippet: 'Tap to view details',
+    _groupNotesByLocation();
+    _markers.clear();
+
+    _notesByLocation.forEach((locationKey, notes) {
+      if (notes.isEmpty) return;
+
+      final firstNote = notes.first;
+      final position = LatLng(firstNote.latitude!, firstNote.longitude!);
+
+      if (notes.length < 2) {
+        // Single note at this location
+        _markers.add(Marker(
+          markerId: MarkerId(firstNote.id),
+          position: position,
+          infoWindow: InfoWindow(
+            title: firstNote.title.isEmpty ? 'Untitled' : firstNote.title,
+            snippet: 'Tap to view details',
+          ),
+          onTap: () => widget.onNoteTap(firstNote),
+        ));
+      } else {
+        // Multiple notes at this location - create cluster marker
+        _markers.add(Marker(
+          markerId: MarkerId(locationKey),
+          position: position,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+          infoWindow: InfoWindow(
+            title: '${notes.length} Notes',
+            snippet: 'Tap to view all notes at this location',
+          ),
+          onTap: () {
+            setState(() {
+              _selectedLocation = locationKey;
+            });
+            _showNotesAtLocation(notes);
+          },
+        ));
+      }
+    });
+  }
+
+  /// Show a dialog with all notes at a specific location
+  void _showNotesAtLocation(List<Note> notes) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${notes.length} Notes at this Location'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: notes.length,
+            itemBuilder: (context, index) {
+              final note = notes[index];
+              return ListTile(
+                title: Text(note.title.isEmpty ? 'Untitled' : note.title),
+                subtitle: Text(
+                  note.content.length > 50 
+                    ? '${note.content.substring(0, 50)}...' 
+                    : note.content,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onNoteTap(note);
+                },
+              );
+            },
+          ),
         ),
-        onTap: () => widget.onNoteTap(note),
-      );
-    }).toSet();
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Fit the map to show all markers

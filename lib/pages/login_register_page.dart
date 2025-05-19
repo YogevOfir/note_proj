@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../auth.dart';
-import 'home_page.dart';
+import '../controllers/auth_controller.dart';
 
 /// A page that handles user authentication, including login and registration.
 /// 
@@ -17,6 +16,8 @@ class LoginRegisterPage extends StatefulWidget {
 }
 
 class _LoginRegisterPageState extends State<LoginRegisterPage> {
+  final _authController = AuthController();
+  
   // Form state
   final _formKey = GlobalKey<FormState>();
   bool _isLogin = true;
@@ -37,82 +38,34 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     super.dispose();
   }
 
-  /// Handle the authentication process (login or register)
-  Future<void> _handleAuth() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      if (_isLogin) {
-        await Auth().signInWithEmailAndPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-      } else {
-        await Auth().createUserWithEmailAndPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
-          fullName: _fullNameController.text,
-        );
-      }
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  /// Build the app title widget
-  Widget _buildTitle() {
-    return const Text(
-      'Notes Tree',
+  AppBar _buildAppBar() {
+  return AppBar(
+    title: const Text(
+      'Welcome to Notes Tree!',
       style: TextStyle(
         color: Colors.white,
         fontSize: 24,
         fontWeight: FontWeight.bold,
       ),
-    );
-  }
+    ),
+    elevation: 0,
+    centerTitle: true, // Ensures the title is centered like before
+  );
+}
 
-  /// Build the welcome message
-  Widget _buildWelcomeMessage() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.person_outline,
-            size: 48,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Welcome to Notes Tree!',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+  Widget _buildTitle() {
+    return Center(
+      child: Text(
+        _isLogin ? 'Login' : 'Sign-Up',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontSize: 40,
+          fontWeight: FontWeight.w700,
+        )
       ),
     );
   }
+
 
   /// Build the authentication form
   Widget _buildAuthForm() {
@@ -195,6 +148,41 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     );
   }
 
+  
+  /// Handle the authentication process (login or register)
+  Future<void> _handleAuth() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      String? error;
+      if (_isLogin) {
+        error = await _authController.signInWithEmailAndPassword(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else {
+        error = await _authController.createUserWithEmailAndPassword(
+          email: _emailController.text,
+          password: _passwordController.text,
+          fullName: _fullNameController.text,
+        );
+      }
+
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+
   /// Build the submit button
   Widget _buildSubmitButton() {
     return SizedBox(
@@ -222,7 +210,7 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
       },
       child: Text(
         _isLogin
-            ? 'Don\'t have an account? Register'
+            ? 'Don\'t have an account yet? Register'
             : 'Already have an account? Login',
       ),
     );
@@ -232,36 +220,24 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: _buildTitle(),
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
-            ],
-          ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildWelcomeMessage(),
-              const SizedBox(height: 32),
-              _buildAuthForm(),
-              const SizedBox(height: 24),
-              _buildSubmitButton(),
-              const SizedBox(height: 16),
-              _buildToggleButton(),
-            ],
-          ),
+      appBar: _buildAppBar(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const SizedBox(height: 50),
+            _buildTitle(),
+            const SizedBox(height: 50),
+            _buildAuthForm(),
+            const SizedBox(height: 24),
+            _buildSubmitButton(),
+            const SizedBox(height: 16),
+            _buildToggleButton(),
+          ],
         ),
       ),
     );
   }
+
+  
 }
