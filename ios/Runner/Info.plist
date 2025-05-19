@@ -55,5 +55,8 @@
 	<string>This app needs access to photo library to select photos for your notes.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to microphone when using the camera.</string>
+	<key>GMSApiKey</key>
+	<string>AIzaSyBl7r4Cx7qab4svWwv_3hMRp-f9hz6HYFE</string>
+
 </dict>
 </plist>
