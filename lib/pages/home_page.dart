@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/note_controller.dart';
 import '../models/note.dart';
@@ -53,16 +52,6 @@ class _HomePageState extends State<HomePage> {
         SnackBar(content: Text(error)),
       );
     }
-  }
-
-  /// Handle note tap
-  void _handleNoteTap(Note note) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NoteEditorPage(note: note),
-      ),
-    );
   }
 
   /// Handle create new note
@@ -144,6 +133,49 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Build the list of notes
+  Widget _buildNoteList() {
+    return Expanded(
+      child: StreamBuilder<List<Note>>(
+        stream: _noteController.getNotesStream(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading notes: ${snapshot.error}',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            );
+          }
+      
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+      
+          final notes = snapshot.data ?? [];
+          // If no notes:
+          if (notes.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          // If On map view
+          if (_isMapView) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 100.0),
+              child: NoteMapView(
+                notes: notes,
+                onNoteTap: _handleNoteTap,
+              ),
+            );
+          }
+
+          // If on ListView
+          return _buildListView(notes);
+        },
+      ),
+    );
+  }
+
   /// Build the empty state widget when no notes exist
   Widget _buildEmptyState() {
     return Center(
@@ -174,61 +206,37 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Build the list of notes
-  Widget _buildNoteList() {
-    return Expanded(
-      child: StreamBuilder<List<Note>>(
-        stream: _noteController.getNotesStream(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading notes: ${snapshot.error}',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            );
-          }
-      
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-      
-          final notes = snapshot.data ?? [];
-          if (notes.isEmpty) {
-            return _buildEmptyState();
-          }
-      
-          if (_isMapView) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 100.0),
-              child: NoteMapView(
-                notes: notes,
-                onNoteTap: _handleNoteTap,
-              ),
-            );
-          }
-      
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: ListTile(
-                  title: Text(
-                    note.title.isEmpty ? 'Untitled' : note.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  onTap: () => _handleNoteTap(note),
+  ListView _buildListView(List<Note> notes) {
+    return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: notes.length,
+          itemBuilder: (context, index) {
+            final note = notes[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ListTile(
+                title: Text(
+                  note.title.isEmpty ? 'Untitled' : note.title,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-              );
-            },
-          );
-        },
+                onTap: () => _handleNoteTap(note),
+              ),
+            );
+          },
+    );
+  }
+
+
+  /// Handle note tap
+  void _handleNoteTap(Note note) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NoteEditorPage(note: note),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
