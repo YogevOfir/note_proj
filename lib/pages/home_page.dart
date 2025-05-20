@@ -105,68 +105,44 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Build the bottom navigation menu (List/Map)
-  Widget _buildBottomNavigationMenu() {
-    return NavigationBar(
-      selectedIndex: _isMapView ? 1 : 0,
-      onDestinationSelected: (int index) {
-        setState(() {
-          _isMapView = index == 1;
-        });
-      },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.list),
-          label: 'List',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.map),
-          label: 'Map',
-        ),
-      ],
-    );
-  }
-
   /// Build the list of notes
   Widget _buildNoteList() {
-    return Expanded(
-      child: StreamBuilder<List<Note>>(
-        stream: _noteController.getNotesStream(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading notes: ${snapshot.error}',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            );
-          }
-      
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-      
-          final notes = snapshot.data ?? [];
-          // If no notes:
-          if (notes.isEmpty) {
-            return _buildEmptyState();
-          }
+    return StreamBuilder<List<Note>>(
+      stream: _noteController.getNotesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading notes: ${snapshot.error}',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          );
+        }
+    
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+    
+        final notes = snapshot.data ?? [];
+        // If no notes:
+        if (notes.isEmpty) {
+          return _buildEmptyState();
+        }
 
-          // If On map view
-          if (_isMapView) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 100.0),
-              child: NoteMapView(
-                notes: notes,
-                onNoteTap: _handleNoteTap,
-              ),
-            );
-          }
+        // If On map view
+        if (_isMapView) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 100.0),
+            child: NoteMapView(
+              notes: notes,
+              onNoteTap: _handleNoteTap,
+            ),
+          );
+        }
 
-          // If on ListView
-          return _buildListView(notes);
-        },
-      ),
+        // If on ListView
+        return _buildListView(notes);
+      },
     );
   }
 
@@ -232,6 +208,33 @@ class _HomePageState extends State<HomePage> {
   }
 
 
+  /// Build the bottom navigation menu
+  Widget _buildBottomNavigationMenu() {
+    return BottomNavigationBar(
+      currentIndex: _isMapView ? 1 : 0,
+      onTap: (index) {
+        setState(() {
+          _isMapView = index == 1;
+        });
+      },
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.list),
+          label: 'List',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.map),
+          label: 'Map',
+        ),
+      ],
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: Colors.brown,
+      unselectedItemColor: Colors.grey,
+      backgroundColor: Colors.white,
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -241,14 +244,17 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
-      body: _buildNoteList(),
-      bottomNavigationBar:  _buildBottomNavigationMenu(),
+      body: SafeArea(
+        child: _buildNoteList(),
+      ),
+      bottomNavigationBar: _buildBottomNavigationMenu(),
       floatingActionButton: FloatingActionButton(
         onPressed: _handleCreateNote,
         child: const Icon(Icons.add),
       ),
     );
   }
+
 }
