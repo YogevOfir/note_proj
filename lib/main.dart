@@ -20,8 +20,6 @@ class MyApp extends StatelessWidget {
     );
   }
 
-
-
   ThemeData _theme() {
     return ThemeData(
       primarySwatch: Colors.brown,

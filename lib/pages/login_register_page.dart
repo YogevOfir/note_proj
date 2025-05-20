@@ -39,19 +39,19 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
   }
 
   AppBar _buildAppBar() {
-  return AppBar(
-    title: const Text(
-      'Welcome to Notes Tree!',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
+    return AppBar(
+      title: const Text(
+        'Welcome to Notes Tree!',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
       ),
-    ),
-    elevation: 0,
-    centerTitle: true, // Ensures the title is centered like before
-  );
-}
+      elevation: 0,
+      centerTitle: true,
+    );
+  }
 
   Widget _buildTitle() {
     return Center(
@@ -61,11 +61,10 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
           color: Theme.of(context).colorScheme.primary,
           fontSize: 40,
           fontWeight: FontWeight.w700,
-        )
+        ),
       ),
     );
   }
-
 
   /// Build the authentication form
   Widget _buildAuthForm() {

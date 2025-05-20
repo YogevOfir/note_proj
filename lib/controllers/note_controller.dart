@@ -61,7 +61,8 @@ class NoteController {
   /// 
   /// Returns a list of validation errors if the note is invalid,
   /// or null if the note was updated successfully.
-  Future<List<String>?> updateNote(Note existingNote, {
+  Future<List<String>?> updateNote(
+    Note existingNote, {
     String? title,
     String? content,
     double? latitude,

@@ -1,7 +1,7 @@
+import 'package:flutter/material.dart';
 import './pages/home_page.dart';
 import './pages/login_register_page.dart';
 import './controllers/auth_controller.dart';
-import 'package:flutter/material.dart';
 
 class WidgetTree extends StatefulWidget {
   const WidgetTree({super.key});
@@ -19,12 +19,12 @@ class _WidgetTreeState extends State<WidgetTree> {
     return StreamBuilder(
       stream: _authController.authStateChanges,
       builder: (context, snapshot) {
-      if (snapshot.hasData) {
-        return HomePage();
-      } else {
-        return const LoginRegisterPage();
-      }
-     }
+        if (snapshot.hasData) {
+          return const HomePage();
+        } else {
+          return const LoginRegisterPage();
+        }
+      },
     );
   }
 }

@@ -15,7 +15,7 @@ class Auth {
   }) async {
     await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
-      password: password
+      password: password,
     );
   }
 
@@ -27,7 +27,7 @@ class Auth {
     // Create the user account
     final UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
-      password: password
+      password: password,
     );
 
     // Store additional user data in Firestore
