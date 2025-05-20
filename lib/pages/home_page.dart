@@ -105,31 +105,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Build the view toggle button (List/Map)
-  Widget _buildViewToggle() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: SegmentedButton<bool>(
-        segments: const [
-          ButtonSegment<bool>(
-            value: false,
-            icon: Icon(Icons.list),
-            label: Text('List'),
-          ),
-          ButtonSegment<bool>(
-            value: true,
-            icon: Icon(Icons.map),
-            label: Text('Map'),
-          ),
-        ],
-        selected: {_isMapView},
-        onSelectionChanged: (Set<bool> newSelection) {
-          setState(() {
-            // Usually for multiple choices, works for 2 the same.
-            _isMapView = newSelection.first;
-          });
-        },
-      ),
+  /// Build the bottom navigation menu (List/Map)
+  Widget _buildBottomNavigationMenu() {
+    return NavigationBar(
+      selectedIndex: _isMapView ? 1 : 0,
+      onDestinationSelected: (int index) {
+        setState(() {
+          _isMapView = index == 1;
+        });
+      },
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.list),
+          label: 'List',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.map),
+          label: 'Map',
+        ),
+      ],
     );
   }
 
@@ -249,15 +243,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          const SizedBox(height: 30),
-          _buildViewToggle(),
-          const SizedBox(height: 16),
-          _buildNoteList(),
-          const SizedBox(height: 16),
-        ],
-      ),
+      body: _buildNoteList(),
+      bottomNavigationBar:  _buildBottomNavigationMenu(),
       floatingActionButton: FloatingActionButton(
         onPressed: _handleCreateNote,
         child: const Icon(Icons.add),
