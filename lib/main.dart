@@ -3,7 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
+  // Initialize Flutter's binding.
+  // This binding ensures that all the necessary platform channels initialize so that Firebase can use it's services.
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Firebase to use it's services
   await Firebase.initializeApp();
   runApp(const MyApp());
 }
@@ -14,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: false, // Remove the debug banner
       theme: _theme(),
       home: const WidgetTree(),
     );

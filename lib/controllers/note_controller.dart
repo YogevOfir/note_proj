@@ -1,6 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Used for User type
 import '../models/note.dart';
 import '../services/note_service.dart';
+import '../services/auth_service.dart';
 
 /// Controller for managing notes in the application.
 /// 
@@ -9,10 +10,12 @@ import '../services/note_service.dart';
 /// between the view and service layers.
 class NoteController {
   final NoteService _noteService = NoteService();
-  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  final AuthService _authService = AuthService();
 
+  /// Get the current user
+  User? get currentUser => _authService.currentUser;
   /// Get the current user's ID
-  String? get currentUserId => _currentUser?.uid;
+  String? get currentUserId => _authService.currentUser?.uid;
 
   /// Get stream of notes for current user
   Stream<List<Note>> getNotesStream() {
@@ -29,7 +32,7 @@ class NoteController {
     double? latitude,
     double? longitude,
   }) async {
-    if (_currentUser == null) {
+    if (currentUser == null) {
       return ['User not authenticated'];
     }
 
@@ -37,7 +40,7 @@ class NoteController {
       id: '',  // Will be set by Firestore
       title: title,
       content: content,
-      userId: _currentUser.uid,
+      userId: currentUser!.uid,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       latitude: latitude,
@@ -68,11 +71,11 @@ class NoteController {
     double? latitude,
     double? longitude,
   }) async {
-    if (_currentUser == null) {
+    if (currentUser == null) {
       return ['User not authenticated'];
     }
 
-    if (existingNote.userId != _currentUser.uid) {
+    if (existingNote.userId != currentUser!.uid) {
       return ['Not authorized to update this note'];
     }
 
@@ -105,11 +108,11 @@ class NoteController {
   /// Returns null if the note was deleted successfully,
   /// or an error message if the deletion failed.
   Future<String?> deleteNote(Note note) async {
-    if (_currentUser == null) {
+    if (currentUser == null) {
       return 'User not authenticated';
     }
 
-    if (note.userId != _currentUser.uid) {
+    if (note.userId != currentUser!.uid) {
       return 'Not authorized to delete this note';
     }
 
