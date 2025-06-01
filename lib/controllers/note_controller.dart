@@ -79,15 +79,12 @@ class NoteController {
       return ['Not authorized to update this note'];
     }
 
-    final updatedNote = Note(
-      id: existingNote.id,
-      title: title ?? existingNote.title,
-      content: content ?? existingNote.content,
-      userId: existingNote.userId,
-      createdAt: existingNote.createdAt,
+    final updatedNote = existingNote.copyWith(
+      title: title,
+      content: content,
       updatedAt: DateTime.now(),
-      latitude: latitude ?? existingNote.latitude,
-      longitude: longitude ?? existingNote.longitude,
+      latitude: latitude,
+      longitude: longitude,
     );
 
     final errors = _validateNote(updatedNote);
