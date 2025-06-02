@@ -14,14 +14,11 @@ import '../controllers/note_controller.dart';
 class NoteEditorPage extends StatefulWidget {
   /// The note to edit, or null if creating a new note
   final Note? note;
-  
-  /// Whether the note should be displayed in view-only mode
-  final bool isViewOnly;
+
 
   const NoteEditorPage({
     super.key, 
     this.note,
-    this.isViewOnly = false,
   });
 
   @override

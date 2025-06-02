@@ -16,6 +16,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Core widget for the app
     return MaterialApp(
       debugShowCheckedModeBanner: false, // Remove the debug banner
       theme: _theme(),

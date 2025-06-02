@@ -1,9 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/note.dart';
-import 'firebase_service.dart';
 
 /// Service class for handling note operations
-class NoteService extends FirebaseService {
+class NoteService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  /// Get the current user
+  User? get currentUser => _auth.currentUser;
+
   /// Get stream of notes for current user
   Stream<List<Note>> getNotesStream() {
     final user = currentUser;
@@ -11,7 +17,7 @@ class NoteService extends FirebaseService {
       return Stream.value([]);
     }
 
-    return firestore
+    return _firestore
         .collection('notes')
         .where('userId', isEqualTo: user.uid)
         .snapshots()
@@ -31,7 +37,7 @@ class NoteService extends FirebaseService {
     final user = currentUser;
     if (user == null) throw Exception('User not authenticated');
     
-    await firestore.collection('notes').add({
+    await _firestore.collection('notes').add({
       'title': note.title,
       'content': note.content,
       'userId': user.uid,
@@ -47,7 +53,7 @@ class NoteService extends FirebaseService {
     final user = currentUser;
     if (user == null) throw Exception('User not authenticated');
     
-    await firestore.collection('notes').doc(noteId).update({
+    await _firestore.collection('notes').doc(noteId).update({
       'title': note.title,
       'content': note.content,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -61,6 +67,6 @@ class NoteService extends FirebaseService {
     final user = currentUser;
     if (user == null) throw Exception('User not authenticated');
     
-    await firestore.collection('notes').doc(noteId).delete();
+    await _firestore.collection('notes').doc(noteId).delete();
   }
 } 
